@@ -1,0 +1,110 @@
+{
+  "config_version": "2026.10.06-1",
+  "notes": "Starting values from docs/SPEC.md section 6. fees_paid_vs_mcap is disabled until a real fee-paid source exists (volume times a constant would invent data). Calibrate against outcome data (section 6.4). Logic in filters.ts and scoring.ts must read from this file, never hardcode.",
+  "hard_filters": {
+    "mint_authority_revoked": { "required": true, "source": "RugCheck / Helius" },
+    "freeze_authority_revoked": { "required": true, "source": "RugCheck / Helius" },
+    "liquidity_locked_or_burned_pct_min": {
+      "value": 90,
+      "exempt_on_launchpad_bonding_curve": true,
+      "source": "RugCheck"
+    },
+    "sell_simulation": {
+      "required": true,
+      "max_price_impact_pct": 10,
+      "test_amount_usd": 10,
+      "source": "Jupiter"
+    },
+    "largest_non_lp_holder_pct_max": { "value": 3.5, "source": "RugCheck / Birdeye" },
+    "fresh_wallets_in_top_20_max": { "value": 3, "source": "Helius" },
+    "fresh_wallet_max_age_days": { "value": 7, "source": "Helius" },
+    "same_source_funded_top_holders_max": { "value": 3, "source": "Helius" },
+    "bundled_cluster_supply_pct_max": { "value": 20, "source": "RugCheck insider networks or own clusters" },
+    "creator_prior_rugs_max": { "value": 0, "source": "creators table" },
+    "honeypot_pattern": {
+      "enabled": true,
+      "description": "up-only chart plus low volume plus few holders",
+      "source": "combined check",
+      "min_candles": 12,
+      "min_up_candle_ratio": 0.85,
+      "max_volume_to_mcap_ratio": 0.05,
+      "max_holders": 80
+    },
+    "min_liquidity_sol": { "value": 5, "source": "DexScreener" },
+    "volume_vs_mcap": {
+      "young_hours": 6,
+      "young_min_ratio": 1,
+      "mature_min_ratio": 0.8,
+      "source": "DexScreener"
+    },
+    "recent_activity": {
+      "min_volume_5m_usd": 100,
+      "min_volume_1h_usd": 500,
+      "source": "DexScreener"
+    }
+  },
+  "scoring": {
+    "weights": {
+      "liquidity_depth_vs_mcap": 20,
+      "volume_vs_mcap": 15,
+      "holder_distribution": 20,
+      "fees_paid_vs_mcap": 10,
+      "dev_behavior": 10,
+      "chart_authenticity": 15,
+      "narrative_crowding": 10,
+      "social_legitimacy": 0
+    },
+    "disabled_factors": ["social_legitimacy", "fees_paid_vs_mcap"],
+    "redistribute_disabled_weights": true,
+    "bands": {
+      "lower_risk_min": 75,
+      "medium_min": 50
+    },
+    "factors": {
+      "liquidity_depth_vs_mcap": {
+        "full_score_ratio": 0.2,
+        "zero_score_ratio": 0.02
+      },
+      "volume_vs_mcap": {
+        "young_hours": 6,
+        "young_min_ratio": 1,
+        "mature_min_ratio": 0.8
+      },
+      "holder_distribution": {
+        "top5_pct_full": 15,
+        "top5_pct_zero": 50,
+        "top10_pct_full": 25,
+        "top10_pct_zero": 70
+      },
+      "dev_behavior": {
+        "large_buy_mcap_pct": 15,
+        "sell_penalty": 0.4
+      },
+      "chart_authenticity": {
+        "identical_body_tolerance_pct": 2,
+        "identical_share_warn": 0.4,
+        "huge_candle_share_warn": 0.45,
+        "staircase_min_steps": 8
+      },
+      "narrative_crowding": {
+        "window_hours": 48,
+        "full_score_peers": 0,
+        "zero_score_peers": 5
+      }
+    }
+  },
+  "regime": {
+    "lookback_days": 7,
+    "hhhl_min_pairs": 2,
+    "majors_up_for_hot": 2,
+    "majors_down_for_cold": 2,
+    "volume_hot_ratio": 1.4,
+    "volume_cold_ratio": 0.7,
+    "peak_mcap_hot_usd": 200000,
+    "peak_mcap_cold_usd": 50000
+  },
+  "calibration": {
+    "offsets_minutes": [5, 15, 30, 60, 360, 1440],
+    "rugged_drop_pct": 80
+  }
+}

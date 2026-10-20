@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Meme Guard
 
-## Getting Started
+A risk-reduced, non-custodial Solana meme coin app. It blocks avoidable losses (rugs, honeypots, bundled supply) and enforces discipline. It does not promise profit, and no check removes all risk. Meme coins can go to zero.
 
-First, run the development server:
+The full build spec lives in [docs/SPEC.md](docs/SPEC.md). Work follows it one phase at a time.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Layout
+
+```
+apps/web              Next.js: UI plus API route handlers
+apps/worker           Node/TypeScript: scanner, risk reports, outcome tracker, regime, notifications
+packages/core         risk engine config (filters and scoring arrive in Phase 2)
+packages/providers    one module per external API
+packages/db           Drizzle schema, migrations, client
+packages/trading      paper, live, limits
+packages/shared-types zod schemas and types shared by web and worker
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run with Docker
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env
+docker compose up --build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Postgres and Redis start, migrations run against the database, then the worker and web app start.
+Open http://localhost:3000. The home page shows worker health.
 
-## Learn More
+## Run locally
 
-To learn more about Next.js, take a look at the following resources:
+Requires Node 20.9+ and pnpm 10.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cp .env.example .env
+pnpm install
+docker compose up postgres redis -d
+pnpm db:migrate
+pnpm dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Web: http://localhost:3000
+- Worker health: http://localhost:4000/health
 
-## Deploy on Vercel
+`pnpm dev`, `pnpm db:migrate` and `pnpm db:generate` load the root `.env` (via `dotenv-cli`) before running, so one file configures both apps. Stop the Docker `web` and `worker` containers first if they are running, or the ports will collide.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Explore (Phase 1)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The worker scans DexScreener listing endpoints every `SCAN_INTERVAL_MS` (default 20 s), refreshes every coin seen in the last `TRACK_WINDOW_HOURS`, and stores snapshots for `SNAPSHOT_RETENTION_DAYS`. Open http://localhost:3000/explore to search by name, ticker or contract address, filter, sort, and open a coin for candles, holders and snapshots.
+
+Data sources and what happens when one is missing:
+
+| Data | Source | Without it |
+| --- | --- | --- |
+| Listings, price, liquidity, volume | DexScreener (no key) | Scanner keeps running, `lastError` in `/health` names the source, list keeps last good data |
+| Candles | Birdeye if `BIRDEYE_API_KEY` is set, else GeckoTerminal (no key) | Chart shows "unavailable" with the reason |
+| Holders, supply, mint and freeze authority | Birdeye for holders if configured, else Helius (`HELIUS_API_KEY`) | Panels show "not configured"; fields stay unknown, never zero |
+
+Every coin shows `UNVERIFIED` until Phase 2 adds risk reports. Unverified and blocked coins are never tradable.

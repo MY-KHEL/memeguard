@@ -1,0 +1,111 @@
+name: meme-guard
+
+x-app-env: &app-env
+  DATABASE_URL: postgres://memeguard:memeguard@postgres:5432/memeguard
+  REDIS_URL: redis://redis:6379
+  HELIUS_API_KEY: ${HELIUS_API_KEY:-}
+  BIRDEYE_API_KEY: ${BIRDEYE_API_KEY:-}
+  RUGCHECK_API_KEY: ${RUGCHECK_API_KEY:-}
+  JUPITER_API_KEY: ${JUPITER_API_KEY:-}
+  DEXSCREENER_BASE_URL: ${DEXSCREENER_BASE_URL:-}
+  GECKOTERMINAL_BASE_URL: ${GECKOTERMINAL_BASE_URL:-}
+  BIRDEYE_BASE_URL: ${BIRDEYE_BASE_URL:-}
+  HELIUS_RPC_URL: ${HELIUS_RPC_URL:-}
+  HELIUS_API_URL: ${HELIUS_API_URL:-}
+  RUGCHECK_BASE_URL: ${RUGCHECK_BASE_URL:-}
+  JUPITER_BASE_URL: ${JUPITER_BASE_URL:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: memeguard
+      POSTGRES_PASSWORD: memeguard
+      POSTGRES_DB: memeguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memeguard -d memeguard"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      <<: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  worker:
+    build:
+      context: .
+      target: worker
+    environment:
+      <<: *app-env
+      NODE_ENV: production
+      WORKER_PORT: 4000
+      SCAN_INTERVAL_MS: ${SCAN_INTERVAL_MS:-20000}
+      TRACK_WINDOW_HOURS: ${TRACK_WINDOW_HOURS:-24}
+      SNAPSHOT_RETENTION_DAYS: ${SNAPSHOT_RETENTION_DAYS:-7}
+      SCANNER_USE_GECKO_NEW_POOLS: ${SCANNER_USE_GECKO_NEW_POOLS:-false}
+      RISK_REFRESH_MINUTES: ${RISK_REFRESH_MINUTES:-30}
+      RISK_PER_CYCLE: ${RISK_PER_CYCLE:-8}
+      LIVE_QUOTE_INTERVAL_MS: ${LIVE_QUOTE_INTERVAL_MS:-1000}
+      LIVE_MAX_WATCHED: ${LIVE_MAX_WATCHED:-90}
+      REGIME_INTERVAL_MS: ${REGIME_INTERVAL_MS:-1800000}
+      OUTCOME_INTERVAL_MS: ${OUTCOME_INTERVAL_MS:-300000}
+      ALERT_INTERVAL_MS: ${ALERT_INTERVAL_MS:-15000}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+    environment:
+      <<: *app-env
+      NODE_ENV: production
+      WORKER_URL: http://worker:4000
+      SESSION_SECRET: ${SESSION_SECRET:-memeguard-compose-session-secret-change-me}
+      DEV_WALLET: ${DEV_WALLET:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      worker:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

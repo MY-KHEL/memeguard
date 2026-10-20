@@ -1,0 +1,31 @@
+---
+description: Meme Guard project rules from docs/SPEC.md section 9
+alwaysApply: true
+---
+
+Project: Meme Guard. Non-custodial, risk-reduced Solana meme coin app.
+Stack: TypeScript everywhere. Next.js App Router (UI and API route handlers),
+a separate Node worker for scanning and risk checks, PostgreSQL with Drizzle,
+Redis with BullMQ, Tailwind.
+Rules:
+- Never handle private keys or seed phrases. Wallet signing happens in the
+  browser only.
+- All risk thresholds and weights come from packages/core/risk-config.json,
+  never hardcoded.
+- Fail closed: missing or failed data means UNVERIFIED and not tradable.
+- Every risk verdict must include reasons with rule name, value, threshold,
+  result.
+- Every provider module returns typed results, caches, rate limits, and never
+  raises on upstream failure.
+- Write unit tests for every filter and scoring function, including boundary
+  values.
+- Read the provider's current API docs before writing integration code; do
+  not guess endpoints.
+- Long-running jobs (scanner, outcome tracker, regime) run in apps/worker,
+  never inside Next.js route handlers.
+- Standalone project: no dependency on the Degen Guard bot or Telegram.
+- Keep changes small. Implement one task at a time and stop for review.
+
+Read docs/SPEC.md before starting any task. Work one phase at a time, one task
+at a time, and do not start a phase until the previous phase's acceptance
+criteria pass.

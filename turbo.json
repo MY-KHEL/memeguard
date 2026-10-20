@@ -1,0 +1,53 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["NODE_ENV"],
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "WORKER_PORT",
+    "WORKER_URL",
+    "HELIUS_API_KEY",
+    "BIRDEYE_API_KEY",
+    "RUGCHECK_API_KEY",
+    "JUPITER_API_KEY",
+    "DEXSCREENER_BASE_URL",
+    "GECKOTERMINAL_BASE_URL",
+    "BIRDEYE_BASE_URL",
+    "HELIUS_RPC_URL",
+    "HELIUS_API_URL",
+    "RUGCHECK_BASE_URL",
+    "JUPITER_BASE_URL",
+    "SCAN_INTERVAL_MS",
+    "TRACK_WINDOW_HOURS",
+    "SNAPSHOT_RETENTION_DAYS",
+    "SCANNER_USE_GECKO_NEW_POOLS",
+    "RISK_REFRESH_MINUTES",
+    "RISK_PER_CYCLE",
+    "LOG_LEVEL",
+    "SESSION_SECRET",
+    "DEV_WALLET",
+    "LIVE_QUOTE_INTERVAL_MS",
+    "LIVE_MAX_WATCHED",
+    "REGIME_INTERVAL_MS",
+    "OUTCOME_INTERVAL_MS",
+    "ALERT_INTERVAL_MS",
+    "CALIBRATION_ADMIN_WALLET",
+    "COINGECKO_API_KEY",
+    "COINGECKO_BASE_URL"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {},
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
+    "test": {}
+  }
+}
